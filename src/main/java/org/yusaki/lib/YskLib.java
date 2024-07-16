@@ -7,21 +7,22 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.mineacademy.fo.plugin.SimplePlugin;
 
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Objects;
 
-public final class YskLib extends JavaPlugin {
+public final class YskLib extends SimplePlugin {
 
     @Override
-    public void onEnable() {
+    public void onPluginStart() {
         getLogger().info("YskLib enabled!");
 
     }
 
     @Override
-    public void onDisable() {
+    public void onPluginStop() {
         getLogger().info("YskLib disabled!");
     }
 
