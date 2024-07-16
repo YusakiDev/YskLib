@@ -1,5 +1,5 @@
 name: YskLib
-version: '1.0.0'
+version: '${version}'
 main: org.yusaki.lib.YskLib
 api-version: '1.20'
 author: Yusaki

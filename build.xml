@@ -29,11 +29,11 @@
             <!--<fileset dir="../Foundation/target/classes"/>-->
         </jar>
 
-        <!-- You can copy the <jar> block above multiple times if you have multi-version testing servers
-        <jar jarfile="/Users/kangarko/Test Servers/1.8.8/plugins/${ant.project.name}.jar" basedir="./target/classes/" includes="**/*">
+        <!-- You can copy the <jar> block above multiple times if you have multi-version testing servers-->
+        <jar jarfile="C:/Users/ASUS/Desktop/New folder (6)/plugins/${ant.project.name}-${pom.version}.jar" basedir="./target/classes/" includes="**/*">
             <zipgroupfileset dir="${user.home}/.m2/repository/com/github/kangarko/Foundation/${foundation.version}/" includes="**/*${foundation.version}.jar" />
-            <fileset dir="../Foundation/target/classes"/>
-        </jar>-->
+            <!--<fileset dir="../Foundation/target/classes"/>-->
+        </jar>
     </target>
 
 </project>
