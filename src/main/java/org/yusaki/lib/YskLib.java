@@ -113,31 +113,31 @@ public final class YskLib extends SimplePlugin {
     }
 
     public void logSevere(JavaPlugin plugin, String message) {
-        if (plugin.getConfig().getInt("debug") <= 0) {
+        if (plugin.getConfig().getInt("debug") >= 0) {
             plugin.getLogger().severe("Critical Error: " + message);
         }
     }
 
     public void logWarn(JavaPlugin plugin, String message) {
-        if (plugin.getConfig().getInt("debug") <= 1) {
+        if (plugin.getConfig().getInt("debug") >= 1) {
             plugin.getLogger().warning("Warning: " + message);
         }
     }
     
     public void logInfo(JavaPlugin plugin, String message) {
-        if (plugin.getConfig().getInt("debug") <= 2) {
+        if (plugin.getConfig().getInt("debug") >= 2) {
             plugin.getLogger().info("Info: " + message);
         }
     }
 
     public void logDebug(JavaPlugin plugin, String message) {
-        if (plugin.getConfig().getInt("debug") <= 3) {
+        if (plugin.getConfig().getInt("debug") >= 3) {
             plugin.getLogger().fine("Debug: " + message);
         }
     }
     
     public void logDebugPlayer(JavaPlugin plugin, Player player, String message) {
-        if (plugin.getConfig().getInt("debug") <= 2) {
+        if (plugin.getConfig().getInt("debug") >= 2) {
             sendMessage(plugin ,player, message);
         }
     }
