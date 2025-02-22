@@ -1,7 +1,7 @@
 name: YskLib
 version: '${version}'
 main: org.yusaki.lib.YskLib
-api-version: '1.21.1'
+api-version: '1.20'
 author: Yusaki
 description: A library plugin for Yusaki's plugins
 folia-supported: true

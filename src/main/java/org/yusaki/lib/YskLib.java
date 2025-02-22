@@ -9,22 +9,31 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.mineacademy.fo.plugin.SimplePlugin;
+import org.yusaki.lib.modules.ItemLibrary;
 
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Objects;
 
-public final class YskLib extends SimplePlugin {
+public final class YskLib extends JavaPlugin {
+    private ItemLibrary itemLibrary;
     
     @Override
-    public void onPluginStart() {
+    public void onEnable() {
+        // Save default config if it doesn't exist
+        saveDefaultConfig();
+        
+        // Initialize ItemLibrary if enabled
+        if (getConfig().getBoolean("modules.item-library.enabled", true)) {
+            itemLibrary = new ItemLibrary(this);
+            getLogger().info("ItemLibrary module enabled!");
+        }
+        
         getLogger().info("YskLib enabled!");
-
     }
 
     @Override
-    public void onPluginStop() {
+    public void onDisable() {
         getLogger().info("YskLib disabled!");
     }
 
@@ -40,16 +49,23 @@ public final class YskLib extends SimplePlugin {
         return enabledWorlds.contains(world.getName());
     }
 
-    public void sendMessage(JavaPlugin plugin, CommandSender sender, String key , Object... args) {
+    public void sendMessage(JavaPlugin plugin, CommandSender sender, String key, Object... args) {
         // Retrieve the message from the configuration
         String message = plugin.getConfig().getString("messages." + key);
-        String prefix = plugin.getConfig().getString("messages.prefix");
-        if (prefix == null) {
-            prefix = "";
-        }
+        String prefix = plugin.getConfig().getString("messages.prefix", "");
+
         if (message != null) {
-            // Format the message with the provided arguments
-            message = String.format(message, args);
+            // Replace placeholders {name} with args
+            if (args != null && args.length > 0) {
+                // Handle pairs of placeholder and value
+                for (int i = 0; i < args.length; i += 2) {
+                    if (i + 1 < args.length) {
+                        String placeholder = "{" + args[i] + "}";
+                        String value = String.valueOf(args[i + 1]);
+                        message = message.replace(placeholder, value);
+                    }
+                }
+            }
 
             // Translate color codes
             message = ChatColor.translateAlternateColorCodes('&', message);
@@ -57,7 +73,6 @@ public final class YskLib extends SimplePlugin {
 
             sender.sendMessage(prefix + message);
         } else {
-
             key = ChatColor.translateAlternateColorCodes('&', key);
             prefix = ChatColor.translateAlternateColorCodes('&', prefix);
 
@@ -132,7 +147,7 @@ public final class YskLib extends SimplePlugin {
 
     public void logDebug(JavaPlugin plugin, String message) {
         if (plugin.getConfig().getInt("debug") >= 3) {
-            plugin.getLogger().fine("Debug: " + message);
+            plugin.getLogger().info("Debug: " + message);
         }
     }
     
@@ -183,5 +198,9 @@ public final class YskLib extends SimplePlugin {
 
         // Reload the configuration to apply changes
         plugin.reloadConfig();
+    }
+
+    public ItemLibrary getItemLibrary() {
+        return itemLibrary;
     }
 }
