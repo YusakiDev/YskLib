@@ -1,0 +1,122 @@
+# Example GUI configurations for the YskLib GUI Framework
+# This demonstrates the pattern-based GUI system similar to LamCrafting
+
+gui:
+  # Example terminal GUI - similar to factory terminal
+  terminal:
+    title: "&e⚙ Factory Terminal"
+    pattern:
+      - "########B"  # B = Back/Close button
+      - "#   O   #"  # O = Output display slot
+      - "##U#I#F##"  # U = Upgrade, I = Info, F = Fuel
+      - "#RRRRRRR#"  # R = Requirements/Recipe slots
+      - "#RRRRRRR#" 
+      - "####C####"  # C = Craft button
+    
+    items:
+      '#':  # Border decoration
+        material: GRAY_STAINED_GLASS_PANE
+        name: " "
+      'B':  # Back button
+        material: BARRIER
+        name: "&cClose"
+        lore:
+          - "&7Click to close this GUI"
+      'O':  # Output slot (dynamic content)
+        material: AIR
+      'U':  # Upgrade button
+        material: EXPERIENCE_BOTTLE
+        name: "&e⚡ Upgrade"
+        lore:
+          - "&7Click to upgrade this factory"
+          - "&8Requires materials and levels"
+      'I':  # Info button
+        material: BOOK
+        name: "&b📋 Information"
+        lore:
+          - "&7View factory details"
+          - "&7and processing information"
+      'F':  # Fuel display (dynamic content)
+        material: AIR
+      'R':  # Requirements slots (dynamic content)
+        material: AIR
+      'C':  # Craft button
+        material: ANVIL
+        name: "&a🔨 Start Crafting"
+        lore:
+          - "&7Click to begin processing"
+          - "&7if you have the materials"
+    
+    behaviors:
+      click_cooldown: 500  # 500ms between clicks
+      close_on_click: ['B']  # Characters that close GUI when clicked
+      sound_effects: true
+
+  # Example browse GUI - for browsing items/recipes
+  browse:
+    title: "&6📦 Item Browser"
+    pattern:
+      - "####N####"  # N = Next page
+      - "#IIIIIII#"  # I = Item display slots
+      - "#IIIIIII#"
+      - "#IIIIIII#"
+      - "#IIIIIII#"
+      - "####P####"  # P = Previous page
+    
+    items:
+      '#':  # Border
+        material: BLACK_STAINED_GLASS_PANE
+        name: " "
+      'N':  # Next page button
+        material: ARROW
+        name: "&aNext Page"
+        lore:
+          - "&7Click to go to next page"
+      'P':  # Previous page button
+        material: ARROW
+        name: "&cPrevious Page"
+        lore:
+          - "&7Click to go to previous page"
+      'I':  # Item display slots (dynamic content)
+        material: AIR
+    
+    behaviors:
+      click_cooldown: 250
+      close_on_click: []
+      sound_effects: true
+
+  # Example confirmation dialog
+  confirm:
+    title: "&4⚠ Confirmation Required"
+    pattern:
+      - "#########"
+      - "#   W   #"  # W = Warning icon
+      - "#       #"
+      - "##Y# #N##"  # Y = Yes, N = No
+      - "#########"
+    
+    items:
+      '#':
+        material: RED_STAINED_GLASS_PANE
+        name: " "
+      'W':
+        material: BARRIER
+        name: "&4⚠ Warning"
+        lore:
+          - "&7This action cannot be undone!"
+          - "&7Are you sure you want to continue?"
+      'Y':
+        material: LIME_CONCRETE
+        name: "&a✓ Yes, Continue"
+        lore:
+          - "&7Click to confirm the action"
+      'N':
+        material: RED_CONCRETE
+        name: "&c✗ No, Cancel"
+        lore:
+          - "&7Click to cancel and go back"
+    
+    behaviors:
+      click_cooldown: 1000  # Longer cooldown for confirmation
+      close_on_click: ['N']
+      sound_effects: true

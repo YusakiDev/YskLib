@@ -1,25 +1,31 @@
 package org.yusaki.lib;
 
+import com.tcoded.folialib.FoliaLib;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.yusaki.lib.config.ConfigUpdateOptions;
+import org.yusaki.lib.config.ConfigUpdateService;
 import org.yusaki.lib.modules.ItemLibrary;
+import org.yusaki.lib.gui.GUIManager;
 
-import java.io.InputStreamReader;
 import java.util.List;
-import java.util.Objects;
 
 public final class YskLib extends JavaPlugin {
+    private FoliaLib foliaLib;
     private ItemLibrary itemLibrary;
+    private GUIManager guiManager;
     
     @Override
     public void onEnable() {
+        // Initialize FoliaLib
+        foliaLib = new FoliaLib(this);
+        
         // Save default config if it doesn't exist
         saveDefaultConfig();
         
@@ -27,6 +33,12 @@ public final class YskLib extends JavaPlugin {
         if (getConfig().getBoolean("modules.item-library.enabled", true)) {
             itemLibrary = new ItemLibrary(this);
             getLogger().info("ItemLibrary module enabled!");
+        }
+        
+        // Initialize GUIManager if enabled
+        if (getConfig().getBoolean("modules.gui.enabled", true)) {
+            guiManager = new GUIManager(this);
+            getLogger().info("GUI Framework module enabled!");
         }
         
         getLogger().info("YskLib enabled!");
@@ -50,9 +62,21 @@ public final class YskLib extends JavaPlugin {
     }
 
     public void sendMessage(JavaPlugin plugin, CommandSender sender, String key, Object... args) {
+        sendMessage(plugin, plugin.getConfig(), sender, key, args);
+    }
+    
+    /**
+     * Send a message from a specific configuration file
+     * @param plugin The plugin instance
+     * @param config The configuration to read from
+     * @param sender The command sender
+     * @param key The message key
+     * @param args The replacement arguments in pairs (placeholder, value)
+     */
+    public void sendMessage(JavaPlugin plugin, FileConfiguration config, CommandSender sender, String key, Object... args) {
         // Retrieve the message from the configuration
-        String message = plugin.getConfig().getString("messages." + key);
-        String prefix = plugin.getConfig().getString("messages.prefix", "");
+        String message = config.getString("messages." + key);
+        String prefix = config.getString("messages.prefix", "");
 
         if (message != null) {
             // Replace placeholders {name} with args
@@ -158,49 +182,57 @@ public final class YskLib extends JavaPlugin {
     }
 
     public void updateConfig(JavaPlugin plugin) {
-        // Reload the plugin's configuration
         plugin.reloadConfig();
 
-        // Load the default configuration from the JAR file
-        YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(Objects.requireNonNull(plugin.getResource("config.yml"))));
+        ConfigUpdateOptions options = ConfigUpdateOptions.builder()
+                .fileName("config.yml")
+                .resourcePath("config.yml")
+                .versionPath("version")
+                .reloadAction(file -> plugin.reloadConfig())
+                .resetAction(file -> plugin.saveDefaultConfig())
+                .skipMergeIfVersionMatches(true)
+                .build();
 
-        // Get the version of the default configuration
-        double defaultVersion = defaultConfig.getDouble("version");
-        logDebug(plugin, "Default config version: " + defaultVersion);
-
-        // Get the version of the current configuration
-        double currentVersion = plugin.getConfig().getDouble("version");
-        logDebug(plugin, "Current config version: " + currentVersion);
-
-        // If the default configuration is newer
-        if (defaultVersion > currentVersion) {
-            logInfo(plugin, "Config version mismatch, updating config file...");
-
-            // Update the current configuration with missing keys from the default configuration
-            for (String key : defaultConfig.getKeys(true)) {
-                logDebug(plugin, "Checking key: " + key);
-                if (!plugin.getConfig().isSet(key)) {
-                    logDebug(plugin, "Missing config, adding new config value: " + key);
-                    plugin.getConfig().set(key, defaultConfig.get(key));
-                } else {
-                    logDebug(plugin, "Config value already exists: " + key);
-                }
-            }
-
-            // Update the version to the default version
-            plugin.getConfig().set("version", defaultVersion);
-
-            // Save the updated configuration
-            plugin.saveConfig();
-        } else {
-            logInfo(plugin, "Config file is up to date.");
-        }
-
-        // Reload the configuration to apply changes
-        plugin.reloadConfig();
+        updateConfig(plugin, options);
     }
 
+    public void updateConfig(JavaPlugin plugin, ConfigUpdateOptions options) {
+        logDebug(plugin, "Starting config update for " + options.fileName());
+        ConfigUpdateService.update(plugin, options);
+    }
+
+    public FoliaLib getFoliaLib() {
+        return foliaLib;
+    }
+    
     public ItemLibrary getItemLibrary() {
         return itemLibrary;
+    }
+    
+    public GUIManager getGUIManager() {
+        return guiManager;
+    }
+    
+    /**
+     * Convenience method to create a GUI for a plugin
+     * @param plugin The plugin creating the GUI
+     * @param guiType The GUI type to create
+     * @return A GUIBuilder instance for the specified GUI type
+     */
+    public org.yusaki.lib.gui.GUIBuilder createGUI(JavaPlugin plugin, String guiType) {
+        if (guiManager == null) {
+            throw new IllegalStateException("GUI Manager is not enabled. Enable it in YskLib config.yml");
+        }
+        return guiManager.createGUI(plugin, guiType);
+    }
+    
+    /**
+     * Load GUI configurations for a plugin
+     * @param plugin The plugin to load GUI configurations for
+     */
+    public void loadGUIConfigurations(JavaPlugin plugin) {
+        if (guiManager != null) {
+            guiManager.loadConfigurations(plugin);
+        }
     }
 }
