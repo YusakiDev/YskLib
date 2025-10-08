@@ -1,9 +1,6 @@
 package org.yusaki.lib;
 
 import com.tcoded.folialib.FoliaLib;
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -12,14 +9,17 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.yusaki.lib.config.ConfigUpdateOptions;
 import org.yusaki.lib.config.ConfigUpdateService;
 import org.yusaki.lib.modules.ItemLibrary;
+import org.yusaki.lib.modules.MessageManager;
 import org.yusaki.lib.gui.GUIManager;
 
 import java.util.List;
+import java.util.Map;
 
 public final class YskLib extends JavaPlugin {
     private FoliaLib foliaLib;
     private ItemLibrary itemLibrary;
     private GUIManager guiManager;
+    private MessageManager messageManager;
     
     @Override
     public void onEnable() {
@@ -40,7 +40,11 @@ public final class YskLib extends JavaPlugin {
             guiManager = new GUIManager(this);
             getLogger().info("GUI Framework module enabled!");
         }
-        
+
+        // Initialize MessageManager
+        messageManager = new MessageManager(this);
+        getLogger().info("MessageManager module enabled!");
+
         getLogger().info("YskLib enabled!");
     }
 
@@ -57,98 +61,78 @@ public final class YskLib extends JavaPlugin {
         // Load the enabled worlds from the config into a list.
         List<String> enabledWorlds = config.getStringList("enabled-worlds");
 
+        // Check if wildcard is present (enables all worlds)
+        if (enabledWorlds.contains("*")) {
+            return true;
+        }
+
         // Check if the current world's name is in the list of enabled worlds.
         return enabledWorlds.contains(world.getName());
     }
 
+    /**
+     * @deprecated Use messageManager.sendMessage() or the new enhanced messaging methods instead
+     */
+    @Deprecated
     public void sendMessage(JavaPlugin plugin, CommandSender sender, String key, Object... args) {
         sendMessage(plugin, plugin.getConfig(), sender, key, args);
     }
-    
+
     /**
      * Send a message from a specific configuration file
+     * @deprecated Use messageManager.sendMessage() instead
      * @param plugin The plugin instance
      * @param config The configuration to read from
      * @param sender The command sender
      * @param key The message key
      * @param args The replacement arguments in pairs (placeholder, value)
      */
+    @Deprecated
     public void sendMessage(JavaPlugin plugin, FileConfiguration config, CommandSender sender, String key, Object... args) {
-        // Retrieve the message from the configuration
-        String message = config.getString("messages." + key);
-        String prefix = config.getString("messages.prefix", "");
-
-        if (message != null) {
-            // Replace placeholders {name} with args
-            if (args != null && args.length > 0) {
-                // Handle pairs of placeholder and value
-                for (int i = 0; i < args.length; i += 2) {
-                    if (i + 1 < args.length) {
-                        String placeholder = "{" + args[i] + "}";
-                        String value = String.valueOf(args[i + 1]);
-                        message = message.replace(placeholder, value);
-                    }
+        // Convert args to Map for new MessageManager
+        Map<String, String> placeholders = MessageManager.createPlaceholders();
+        if (args != null && args.length > 0) {
+            for (int i = 0; i < args.length; i += 2) {
+                if (i + 1 < args.length) {
+                    placeholders.put(String.valueOf(args[i]), String.valueOf(args[i + 1]));
                 }
             }
-
-            // Translate color codes
-            message = ChatColor.translateAlternateColorCodes('&', message);
-            prefix = ChatColor.translateAlternateColorCodes('&', prefix);
-
-            sender.sendMessage(prefix + message);
-        } else {
-            key = ChatColor.translateAlternateColorCodes('&', key);
-            prefix = ChatColor.translateAlternateColorCodes('&', prefix);
-
-            sender.sendMessage(prefix + key);
         }
+
+        // Use new MessageManager
+        messageManager.sendMessage(plugin, sender, key, placeholders);
     }
 
+    /**
+     * @deprecated Use messageManager.sendActionBar() instead
+     */
+    @Deprecated
     public void sendActionBar(JavaPlugin plugin, Player player, String key, Object... args) {
-        // Retrieve the message from the configuration
-        String message = plugin.getConfig().getString("messages." + key);
-        if (message != null) {
-            // Format the message with the provided arguments
-            message = String.format(message, args);
-
-            // Translate color codes
-            message = ChatColor.translateAlternateColorCodes('&', message);
-
-            // Send the action bar message
-            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
-        } else {
-            key = ChatColor.translateAlternateColorCodes('&', key);
-            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(key));
+        Map<String, String> placeholders = MessageManager.createPlaceholders();
+        if (args != null && args.length > 0) {
+            for (int i = 0; i < args.length; i += 2) {
+                if (i + 1 < args.length) {
+                    placeholders.put(String.valueOf(args[i]), String.valueOf(args[i + 1]));
+                }
+            }
         }
+        messageManager.sendActionBar(plugin, player, key, placeholders);
     }
 
+    /**
+     * @deprecated Use messageManager.sendTitle() instead
+     */
+    @Deprecated
     public void sendTitle(JavaPlugin plugin, Player player, String titleKey, String subtitleKey, int fadeIn, int stay, int fadeOut, Object... args) {
-        // Retrieve the title and subtitle from the configuration
-        String title = plugin.getConfig().getString("messages." + titleKey);
-        String subtitle = plugin.getConfig().getString("messages." + subtitleKey);
-
-        if (title != null) {
-            // Format the title with the provided arguments
-            title = String.format(title, args);
-
-            // Translate color codes
-            title = ChatColor.translateAlternateColorCodes('&', title);
-        } else {
-            title = ChatColor.translateAlternateColorCodes('&', titleKey);
+        Map<String, String> placeholders = MessageManager.createPlaceholders();
+        if (args != null && args.length > 0) {
+            for (int i = 0; i < args.length; i += 2) {
+                if (i + 1 < args.length) {
+                    placeholders.put(String.valueOf(args[i]), String.valueOf(args[i + 1]));
+                }
+            }
         }
-
-        if (subtitle != null) {
-            // Format the subtitle with the provided arguments
-            subtitle = String.format(subtitle, args);
-
-            // Translate color codes
-            subtitle = ChatColor.translateAlternateColorCodes('&', subtitle);
-        } else {
-            subtitle = ChatColor.translateAlternateColorCodes('&', subtitleKey);
-        }
-
-        // Send the title and subtitle
-        player.sendTitle(title, subtitle, fadeIn, stay, fadeOut);
+        messageManager.sendTitle(plugin, player, titleKey, subtitleKey, fadeIn, stay, fadeOut, placeholders);
     }
 
     public void logSevere(JavaPlugin plugin, String message) {
@@ -233,6 +217,20 @@ public final class YskLib extends JavaPlugin {
     public void loadGUIConfigurations(JavaPlugin plugin) {
         if (guiManager != null) {
             guiManager.loadConfigurations(plugin);
+        }
+    }
+
+    public MessageManager getMessageManager() {
+        return messageManager;
+    }
+
+    /**
+     * Load messages for a plugin (should be called in onEnable)
+     * @param plugin The plugin to load messages for
+     */
+    public void loadMessages(JavaPlugin plugin) {
+        if (messageManager != null) {
+            messageManager.loadMessages(plugin);
         }
     }
 }
