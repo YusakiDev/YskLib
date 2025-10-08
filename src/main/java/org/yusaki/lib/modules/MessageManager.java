@@ -1,15 +1,16 @@
 package org.yusaki.lib.modules;
 
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.yusaki.lib.YskLib;
+import org.yusaki.lib.text.ColorHelper;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class MessageManager {
         PluginMessages messages = pluginMessages.computeIfAbsent(plugin, k -> new PluginMessages());
         messages.singleMessages.clear();
         messages.multiMessages.clear();
-        messages.prefix = "";
+        messages.resetPrefix();
 
         if (messagesSection == null) {
             lib.logWarn(plugin, "No messages section found in config.yml! Using default messages.");
@@ -47,17 +48,15 @@ public class MessageManager {
         for (String key : messagesSection.getKeys(false)) {
             Object value = messagesSection.get(key);
 
-            if (value instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<String> messageList = (List<String>) value;
-                messages.multiMessages.put(key, messageList.stream()
-                        .map(msg -> ChatColor.translateAlternateColorCodes('&', msg))
-                        .toList());
-            } else if (value instanceof String) {
-                String message = ChatColor.translateAlternateColorCodes('&', (String) value);
-                messages.singleMessages.put(key, message);
+            if (value instanceof List<?> list) {
+                List<String> messageList = list.stream()
+                        .map(item -> item == null ? "" : item.toString())
+                        .toList();
+                messages.multiMessages.put(key, messageList);
+            } else if (value instanceof String str) {
+                messages.singleMessages.put(key, str);
                 if ("prefix".equalsIgnoreCase(key)) {
-                    messages.prefix = message;
+                    messages.updatePrefix(str);
                 }
             }
         }
@@ -70,17 +69,14 @@ public class MessageManager {
      * Get a single-line message with placeholders
      */
     public String getMessage(JavaPlugin plugin, String key, Map<String, String> placeholders) {
-        PluginMessages messages = pluginMessages.get(plugin);
-        if (messages == null) {
-            return ChatColor.RED + "Messages not loaded for " + plugin.getName();
-        }
+        return resolveMessage(plugin, key, placeholders).legacy();
+    }
 
-        String message = messages.singleMessages.get(key);
-        if (message == null) {
-            return ChatColor.RED + "Message not found: " + key;
-        }
-
-        return replacePlaceholders(message, placeholders);
+    /**
+     * Get a single-line message as a component with placeholders.
+     */
+    public Component getMessageComponent(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        return resolveMessage(plugin, key, placeholders).component();
     }
 
     /**
@@ -91,21 +87,27 @@ public class MessageManager {
     }
 
     /**
+     * Get a single-line message component without placeholders.
+     */
+    public Component getMessageComponent(JavaPlugin plugin, String key) {
+        return getMessageComponent(plugin, key, new HashMap<>());
+    }
+
+    /**
      * Get a multi-line message list with placeholders
      */
     public List<String> getMessageList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
-        PluginMessages messages = pluginMessages.get(plugin);
-        if (messages == null) {
-            return List.of(ChatColor.RED + "Messages not loaded for " + plugin.getName());
-        }
+        return resolveMessageList(plugin, key, placeholders).stream()
+                .map(NormalizedMessage::legacy)
+                .toList();
+    }
 
-        List<String> messageList = messages.multiMessages.get(key);
-        if (messageList == null) {
-            return List.of(ChatColor.RED + "Message list not found: " + key);
-        }
-
-        return messageList.stream()
-                .map(msg -> replacePlaceholders(msg, placeholders))
+    /**
+     * Get a multi-line message component list with placeholders.
+     */
+    public List<Component> getMessageComponentList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        return resolveMessageList(plugin, key, placeholders).stream()
+                .map(NormalizedMessage::component)
                 .toList();
     }
 
@@ -117,11 +119,18 @@ public class MessageManager {
     }
 
     /**
+     * Get a multi-line message component list without placeholders.
+     */
+    public List<Component> getMessageComponentList(JavaPlugin plugin, String key) {
+        return getMessageComponentList(plugin, key, new HashMap<>());
+    }
+
+    /**
      * Replace placeholders in a message
      * Supports both {placeholder} and %placeholder% formats for backward compatibility
      */
     private String replacePlaceholders(String message, Map<String, String> placeholders) {
-        String result = message;
+        String result = message == null ? "" : message;
         for (Map.Entry<String, String> entry : placeholders.entrySet()) {
             // Support both formats: {key} and %key%
             result = result.replace("{" + entry.getKey() + "}", entry.getValue());
@@ -134,14 +143,14 @@ public class MessageManager {
      * Send a single-line message to a sender
      */
     public void sendMessage(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
-        sender.sendMessage(getMessage(plugin, key, placeholders));
+        sender.sendMessage(resolveMessage(plugin, key, placeholders).component());
     }
 
     /**
      * Send a single-line message to a sender with the configured prefix applied.
      */
     public void sendPrefixedMessage(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
-        sender.sendMessage(getPrefixedMessage(plugin, key, placeholders));
+        sender.sendMessage(applyPrefix(plugin, resolveMessage(plugin, key, placeholders)).component());
     }
 
     /**
@@ -162,20 +171,18 @@ public class MessageManager {
      * Send a multi-line message to a sender
      */
     public void sendMessageList(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
-        List<String> messages = getMessageList(plugin, key, placeholders);
-        for (String message : messages) {
-            sender.sendMessage(message);
-        }
+        resolveMessageList(plugin, key, placeholders)
+                .forEach(message -> sender.sendMessage(message.component()));
     }
 
     /**
      * Send a multi-line message to a sender with the prefix applied to each line.
      */
     public void sendPrefixedMessageList(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
-        List<String> messages = getPrefixedMessageList(plugin, key, placeholders);
-        for (String message : messages) {
-            sender.sendMessage(message);
-        }
+        PluginMessages messages = pluginMessages.get(plugin);
+        resolveMessageList(plugin, key, placeholders).stream()
+                .map(normalized -> applyPrefix(messages, normalized))
+                .forEach(normalized -> sender.sendMessage(normalized.component()));
     }
 
     /**
@@ -196,8 +203,7 @@ public class MessageManager {
      * Send action bar message to player
      */
     public void sendActionBar(JavaPlugin plugin, Player player, String key, Map<String, String> placeholders) {
-        String message = getMessage(plugin, key, placeholders);
-        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
+        player.sendActionBar(resolveMessage(plugin, key, placeholders).component());
     }
 
     /**
@@ -212,9 +218,10 @@ public class MessageManager {
      */
     public void sendTitle(JavaPlugin plugin, Player player, String titleKey, String subtitleKey,
                          int fadeIn, int stay, int fadeOut, Map<String, String> placeholders) {
-        String title = getMessage(plugin, titleKey, placeholders);
-        String subtitle = getMessage(plugin, subtitleKey, placeholders);
-        player.sendTitle(title, subtitle, fadeIn, stay, fadeOut);
+        NormalizedMessage title = resolveMessage(plugin, titleKey, placeholders);
+        NormalizedMessage subtitle = resolveMessage(plugin, subtitleKey, placeholders);
+        Title.Times times = Title.Times.times(ticksToDuration(fadeIn), ticksToDuration(stay), ticksToDuration(fadeOut));
+        player.showTitle(Title.title(title.component(), subtitle.component(), times));
     }
 
     /**
@@ -250,7 +257,30 @@ public class MessageManager {
     private static class PluginMessages {
         final Map<String, String> singleMessages = new ConcurrentHashMap<>();
         final Map<String, List<String>> multiMessages = new ConcurrentHashMap<>();
-        volatile String prefix = "";
+        volatile Component prefixComponent = Component.empty();
+        volatile String legacyPrefix = "";
+        volatile String plainPrefix = "";
+
+        void resetPrefix() {
+            updatePrefix("");
+        }
+
+        void updatePrefix(String rawPrefix) {
+            if (rawPrefix == null || rawPrefix.isEmpty()) {
+                prefixComponent = Component.empty();
+                legacyPrefix = "";
+                plainPrefix = "";
+                return;
+            }
+
+            Component component = ColorHelper.toComponent(rawPrefix);
+            prefixComponent = component;
+            legacyPrefix = ColorHelper.toLegacy(component);
+            plainPrefix = ColorHelper.toPlain(component);
+        }
+    }
+
+    private record NormalizedMessage(Component component, String legacy, String plain) {
     }
 
     /**
@@ -261,15 +291,25 @@ public class MessageManager {
         if (messages == null) {
             return "";
         }
-        return messages.prefix == null ? "" : messages.prefix;
+        return messages.legacyPrefix;
+    }
+
+    /**
+     * Retrieve the configured prefix as a component for a plugin.
+     */
+    public Component getPrefixComponent(JavaPlugin plugin) {
+        PluginMessages messages = pluginMessages.get(plugin);
+        if (messages == null) {
+            return Component.empty();
+        }
+        return messages.prefixComponent;
     }
 
     /**
      * Get a single-line message with prefix applied.
      */
     public String getPrefixedMessage(JavaPlugin plugin, String key, Map<String, String> placeholders) {
-        String message = getMessage(plugin, key, placeholders);
-        return applyPrefix(plugin, message);
+        return applyPrefix(plugin, resolveMessage(plugin, key, placeholders)).legacy();
     }
 
     public String getPrefixedMessage(JavaPlugin plugin, String key) {
@@ -277,11 +317,23 @@ public class MessageManager {
     }
 
     /**
+     * Get a single-line message component with prefix applied.
+     */
+    public Component getPrefixedMessageComponent(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        return applyPrefix(plugin, resolveMessage(plugin, key, placeholders)).component();
+    }
+
+    public Component getPrefixedMessageComponent(JavaPlugin plugin, String key) {
+        return getPrefixedMessageComponent(plugin, key, new HashMap<>());
+    }
+
+    /**
      * Get a multi-line message list with prefix applied to each line.
      */
     public List<String> getPrefixedMessageList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
-        return getMessageList(plugin, key, placeholders).stream()
-                .map(message -> applyPrefix(plugin, message))
+        PluginMessages messages = pluginMessages.get(plugin);
+        return resolveMessageList(plugin, key, placeholders).stream()
+                .map(normalized -> applyPrefix(messages, normalized).legacy())
                 .toList();
     }
 
@@ -289,25 +341,98 @@ public class MessageManager {
         return getPrefixedMessageList(plugin, key, new HashMap<>());
     }
 
-    private String applyPrefix(JavaPlugin plugin, String message) {
-        if (message == null) {
-            return null;
-        }
+    /**
+     * Get a multi-line message component list with prefix applied to each line.
+     */
+    public List<Component> getPrefixedMessageComponentList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        PluginMessages messages = pluginMessages.get(plugin);
+        return resolveMessageList(plugin, key, placeholders).stream()
+                .map(normalized -> applyPrefix(messages, normalized).component())
+                .toList();
+    }
+
+    public List<Component> getPrefixedMessageComponentList(JavaPlugin plugin, String key) {
+        return getPrefixedMessageComponentList(plugin, key, new HashMap<>());
+    }
+
+    private NormalizedMessage resolveMessage(JavaPlugin plugin, String key, Map<String, String> placeholders) {
         PluginMessages messages = pluginMessages.get(plugin);
         if (messages == null) {
+            return errorMessage("Messages not loaded for " + plugin.getName());
+        }
+
+        String lookupKey = sanitizeKey(key);
+        String raw = messages.singleMessages.get(lookupKey);
+        if (raw == null) {
+            return errorMessage("Message not found: " + key);
+        }
+
+        return normalise(raw, placeholders);
+    }
+
+    private List<NormalizedMessage> resolveMessageList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        PluginMessages messages = pluginMessages.get(plugin);
+        if (messages == null) {
+            return List.of(errorMessage("Messages not loaded for " + plugin.getName()));
+        }
+
+        String lookupKey = sanitizeKey(key);
+        List<String> rawList = messages.multiMessages.get(lookupKey);
+        if (rawList == null) {
+            return List.of(errorMessage("Message list not found: " + key));
+        }
+
+        return rawList.stream()
+                .map(raw -> normalise(raw, placeholders))
+                .toList();
+    }
+
+    private String sanitizeKey(String key) {
+        if (key == null) {
+            return "";
+        }
+        if (key.startsWith("messages.")) {
+            return key.substring("messages.".length());
+        }
+        return key;
+    }
+
+    private NormalizedMessage normalise(String raw, Map<String, String> placeholders) {
+        String resolved = replacePlaceholders(raw, placeholders);
+        Component component = ColorHelper.toComponent(resolved);
+        return new NormalizedMessage(component, ColorHelper.toLegacy(component), ColorHelper.toPlain(component));
+    }
+
+    private NormalizedMessage errorMessage(String reason) {
+        Component component = ColorHelper.toComponent("<red>" + reason);
+        return new NormalizedMessage(component, ColorHelper.toLegacy(component), ColorHelper.toPlain(component));
+    }
+
+    private NormalizedMessage applyPrefix(JavaPlugin plugin, NormalizedMessage message) {
+        return applyPrefix(pluginMessages.get(plugin), message);
+    }
+
+    private NormalizedMessage applyPrefix(PluginMessages messages, NormalizedMessage message) {
+        if (messages == null || message == null) {
             return message;
         }
-        String prefix = messages.prefix;
-        if (prefix == null || prefix.isEmpty()) {
+        if (messages.legacyPrefix.isEmpty()) {
+            return message;
+        }
+        if (!messages.plainPrefix.isEmpty() && message.plain().startsWith(messages.plainPrefix)) {
             return message;
         }
 
-        String strippedPrefix = ChatColor.stripColor(prefix);
-        String strippedMessage = ChatColor.stripColor(message);
-        if (strippedPrefix != null && !strippedPrefix.isEmpty() && strippedMessage != null && strippedMessage.startsWith(strippedPrefix)) {
-            return message;
-        }
+        Component component = messages.prefixComponent.append(message.component());
+        String legacy = messages.legacyPrefix + message.legacy();
+        String plain = messages.plainPrefix + message.plain();
+        return new NormalizedMessage(component, legacy, plain);
+    }
 
-        return prefix + message;
+    private static Duration ticksToDuration(int ticks) {
+        if (ticks <= 0) {
+            return Duration.ZERO;
+        }
+        return Duration.ofMillis((long) ticks * 50L);
     }
 }
