@@ -23,7 +23,7 @@ jobs:
         cache: maven
 
     - name: Build YskLib with build number
-      run: mvn clean package -DskipTests -Dbuild.number=${{ github.run_number }}
+      run: mvn clean package -DskipTests -Dbuild.number.formatted=-b${{ github.run_number }}
 
     - name: Upload YskLib artifact
       uses: actions/upload-artifact@v4

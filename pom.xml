@@ -13,7 +13,7 @@
     <name>YskLib</name>
 
     <!-- Change to the appropriate plugin's version, starting at 1.0.0. -->
-    <version>1.6.3${build.number.suffix}</version>
+    <version>1.6.3</version>
 
     <!-- DO NOT EDIT. -->
     <packaging>jar</packaging>
@@ -39,8 +39,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Build number from CI/CD or empty for local builds -->
-        <build.number></build.number>
-        <build.number.suffix></build.number.suffix>
+        <build.number.formatted></build.number.formatted>
     </properties>
 
     <repositories>
@@ -103,34 +102,6 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>set-build-number</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <configuration>
-                            <target>
-                                <condition property="build.number.suffix" value="-b${build.number}" else="">
-                                    <and>
-                                        <isset property="build.number"/>
-                                        <not>
-                                            <equals arg1="${build.number}" arg2=""/>
-                                        </not>
-                                    </and>
-                                </condition>
-                                <echo>Build number suffix: ${build.number.suffix}</echo>
-                            </target>
-                            <exportAntProperties>true</exportAntProperties>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
 
                 <!-- Change version to the latest one from
@@ -163,6 +134,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <finalName>${project.name}-${project.version}${build.number.formatted}</finalName>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <minimizeJar>true</minimizeJar>
                             <filters>
