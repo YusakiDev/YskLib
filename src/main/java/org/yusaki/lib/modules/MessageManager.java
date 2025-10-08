@@ -37,6 +37,7 @@ public class MessageManager {
         PluginMessages messages = pluginMessages.computeIfAbsent(plugin, k -> new PluginMessages());
         messages.singleMessages.clear();
         messages.multiMessages.clear();
+        messages.prefix = "";
 
         if (messagesSection == null) {
             lib.logWarn(plugin, "No messages section found in config.yml! Using default messages.");
@@ -55,6 +56,9 @@ public class MessageManager {
             } else if (value instanceof String) {
                 String message = ChatColor.translateAlternateColorCodes('&', (String) value);
                 messages.singleMessages.put(key, message);
+                if ("prefix".equalsIgnoreCase(key)) {
+                    messages.prefix = message;
+                }
             }
         }
 
@@ -134,10 +138,24 @@ public class MessageManager {
     }
 
     /**
+     * Send a single-line message to a sender with the configured prefix applied.
+     */
+    public void sendPrefixedMessage(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
+        sender.sendMessage(getPrefixedMessage(plugin, key, placeholders));
+    }
+
+    /**
      * Send a single-line message to a sender without placeholders
      */
     public void sendMessage(JavaPlugin plugin, CommandSender sender, String key) {
         sendMessage(plugin, sender, key, new HashMap<>());
+    }
+
+    /**
+     * Send a single-line message with prefix without placeholders.
+     */
+    public void sendPrefixedMessage(JavaPlugin plugin, CommandSender sender, String key) {
+        sendPrefixedMessage(plugin, sender, key, new HashMap<>());
     }
 
     /**
@@ -151,10 +169,27 @@ public class MessageManager {
     }
 
     /**
+     * Send a multi-line message to a sender with the prefix applied to each line.
+     */
+    public void sendPrefixedMessageList(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
+        List<String> messages = getPrefixedMessageList(plugin, key, placeholders);
+        for (String message : messages) {
+            sender.sendMessage(message);
+        }
+    }
+
+    /**
      * Send a multi-line message to a sender without placeholders
      */
     public void sendMessageList(JavaPlugin plugin, CommandSender sender, String key) {
         sendMessageList(plugin, sender, key, new HashMap<>());
+    }
+
+    /**
+     * Send a multi-line message with prefix without placeholders.
+     */
+    public void sendPrefixedMessageList(JavaPlugin plugin, CommandSender sender, String key) {
+        sendPrefixedMessageList(plugin, sender, key, new HashMap<>());
     }
 
     /**
@@ -215,5 +250,64 @@ public class MessageManager {
     private static class PluginMessages {
         final Map<String, String> singleMessages = new ConcurrentHashMap<>();
         final Map<String, List<String>> multiMessages = new ConcurrentHashMap<>();
+        volatile String prefix = "";
+    }
+
+    /**
+     * Retrieve the configured prefix for a plugin.
+     */
+    public String getPrefix(JavaPlugin plugin) {
+        PluginMessages messages = pluginMessages.get(plugin);
+        if (messages == null) {
+            return "";
+        }
+        return messages.prefix == null ? "" : messages.prefix;
+    }
+
+    /**
+     * Get a single-line message with prefix applied.
+     */
+    public String getPrefixedMessage(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        String message = getMessage(plugin, key, placeholders);
+        return applyPrefix(plugin, message);
+    }
+
+    public String getPrefixedMessage(JavaPlugin plugin, String key) {
+        return getPrefixedMessage(plugin, key, new HashMap<>());
+    }
+
+    /**
+     * Get a multi-line message list with prefix applied to each line.
+     */
+    public List<String> getPrefixedMessageList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
+        return getMessageList(plugin, key, placeholders).stream()
+                .map(message -> applyPrefix(plugin, message))
+                .toList();
+    }
+
+    public List<String> getPrefixedMessageList(JavaPlugin plugin, String key) {
+        return getPrefixedMessageList(plugin, key, new HashMap<>());
+    }
+
+    private String applyPrefix(JavaPlugin plugin, String message) {
+        if (message == null) {
+            return null;
+        }
+        PluginMessages messages = pluginMessages.get(plugin);
+        if (messages == null) {
+            return message;
+        }
+        String prefix = messages.prefix;
+        if (prefix == null || prefix.isEmpty()) {
+            return message;
+        }
+
+        String strippedPrefix = ChatColor.stripColor(prefix);
+        String strippedMessage = ChatColor.stripColor(message);
+        if (strippedPrefix != null && !strippedPrefix.isEmpty() && strippedMessage != null && strippedMessage.startsWith(strippedPrefix)) {
+            return message;
+        }
+
+        return prefix + message;
     }
 }
