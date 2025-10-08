@@ -25,8 +25,14 @@ jobs:
     - name: Build YskLib with build number
       run: mvn clean package -DskipTests -Dbuild.number.formatted=-b${{ github.run_number }}
 
+    - name: Prepare artifacts
+      run: |
+        mkdir -p artifacts
+        cp target/YskLib-*-b*.jar artifacts/
+
     - name: Upload YskLib artifact
       uses: actions/upload-artifact@v4
       with:
         name: YskLib
-        path: target/YskLib-*.jar
+        path: artifacts/*.jar
+        compression-level: 0
