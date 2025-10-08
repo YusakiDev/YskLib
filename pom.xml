@@ -13,7 +13,7 @@
     <name>YskLib</name>
 
     <!-- Change to the appropriate plugin's version, starting at 1.0.0. -->
-    <version>1.6.3</version>
+    <version>1.6.3${build.number.formatted}</version>
 
     <!-- DO NOT EDIT. -->
     <packaging>jar</packaging>
@@ -134,7 +134,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <finalName>${project.name}-${project.version}${build.number.formatted}</finalName>
+                            <finalName>${project.name}-${project.version}</finalName>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <minimizeJar>true</minimizeJar>
                             <filters>
