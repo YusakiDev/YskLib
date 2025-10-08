@@ -4,6 +4,26 @@ YskLib is a library plugin for Yusaki's plugins. It provides a set of utility fu
 
 ## Features
 
+### Message Management
+- **Cached messaging system** - Load messages once at startup, reuse from memory for better performance
+- **Dual placeholder support** - Supports both `{placeholder}` and `%placeholder%` formats for backward compatibility
+- **Multi-line messages** - Support for List-based messages
+- **Placeholder replacement** - Easy key-value placeholder system using Maps
+- **Action bar & title helpers** - Built-in methods for sending action bars and titles
+- **Centralized management** - One place to handle all plugin messaging
+
+Example usage:
+```java
+// Load messages in onEnable
+YskLib yskLib = (YskLib) getServer().getPluginManager().getPlugin("YskLib");
+yskLib.loadMessages(this);
+MessageManager messageManager = yskLib.getMessageManager();
+
+// Send message with placeholders (supports both {player} and %player%)
+messageManager.sendMessage(this, player, "welcome-message",
+    MessageManager.placeholders("player", player.getName(), "server", "MyServer"));
+```
+
 ### World Management
 - `YskLib#canExecuteInWorld(JavaPlugin plugin, World world)` checks if a plugin is enabled in a specific world based on the `enabled-worlds` configuration list.
 - Supports wildcard `*` to enable all worlds.
