@@ -1,6 +1,7 @@
 package org.yusaki.lib;
 
 import com.tcoded.folialib.FoliaLib;
+import net.kyori.adventure.text.Component;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -8,9 +9,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.yusaki.lib.config.ConfigUpdateOptions;
 import org.yusaki.lib.config.ConfigUpdateService;
+import org.yusaki.lib.gui.GUIManager;
 import org.yusaki.lib.modules.ItemLibrary;
 import org.yusaki.lib.modules.MessageManager;
-import org.yusaki.lib.gui.GUIManager;
+import org.yusaki.lib.text.ColorHelper;
 
 import java.util.List;
 import java.util.Map;
@@ -163,6 +165,26 @@ public final class YskLib extends JavaPlugin {
         if (plugin.getConfig().getInt("debug") >= 2) {
             sendMessage(plugin ,player, message);
         }
+    }
+
+    public Component colorizeComponent(String input) {
+        return ColorHelper.toComponent(input);
+    }
+
+    public String colorizeLegacy(String input) {
+        return ColorHelper.toLegacy(input);
+    }
+
+    public String colorizeLegacy(Component component) {
+        return ColorHelper.toLegacy(component);
+    }
+
+    public String colorizePlain(String input) {
+        return ColorHelper.toPlain(input);
+    }
+
+    public String colorizePlain(Component component) {
+        return ColorHelper.toPlain(component);
     }
 
     public void updateConfig(JavaPlugin plugin) {
