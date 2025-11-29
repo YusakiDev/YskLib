@@ -22,10 +22,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MessageManager {
     private final YskLib lib;
     private final Map<JavaPlugin, PluginMessages> pluginMessages;
+    private final Map<String, PluginMessages> moduleMessages; // Key: "pluginName:moduleName"
 
     public MessageManager(YskLib lib) {
         this.lib = lib;
         this.pluginMessages = new ConcurrentHashMap<>();
+        this.moduleMessages = new ConcurrentHashMap<>();
     }
 
     /**
@@ -33,19 +35,51 @@ public class MessageManager {
      */
     public void loadMessages(JavaPlugin plugin) {
         FileConfiguration config = plugin.getConfig();
-        ConfigurationSection messagesSection = config.getConfigurationSection("messages");
+        loadMessages(plugin, config, "messages");
+    }
+    
+    /**
+     * Load messages for a module with a specific module ID
+     * This allows multiple modules within the same plugin to have separate message pools and prefixes
+     * @param plugin The plugin instance
+     * @param moduleId Unique identifier for the module (e.g., "portal", "weather")
+     * @param config The configuration to load from
+     * @param sectionPath The path to the messages section (e.g., "messages")
+     */
+    public void loadModuleMessages(JavaPlugin plugin, String moduleId, FileConfiguration config, String sectionPath) {
+        String moduleKey = plugin.getName() + ":" + moduleId;
+        ConfigurationSection messagesSection = config.getConfigurationSection(sectionPath);
 
-        PluginMessages messages = pluginMessages.computeIfAbsent(plugin, k -> new PluginMessages());
+        PluginMessages messages = moduleMessages.computeIfAbsent(moduleKey, k -> new PluginMessages());
+        
+        // Always clear for module messages
         messages.singleMessages.clear();
         messages.multiMessages.clear();
         messages.resetPrefix();
 
         if (messagesSection == null) {
-            lib.logWarn(plugin, "No messages section found in config.yml! Using default messages.");
+            lib.logWarn(plugin, "No messages section found at '" + sectionPath + "' for module '" + moduleId + "'!");
             return;
         }
 
+        // Load prefix FIRST before other messages
+        if (messagesSection.contains("prefix") && messagesSection.isString("prefix")) {
+            String prefixValue = messagesSection.getString("prefix");
+            if (prefixValue != null) {
+                messages.updatePrefix(prefixValue);
+                lib.logDebug(plugin, "Updated prefix for module '" + moduleId + "' from " + sectionPath);
+            }
+        }
+
+        int singleCount = 0;
+        int multiCount = 0;
+        
         for (String key : messagesSection.getKeys(false)) {
+            // Skip prefix since we already loaded it
+            if ("prefix".equalsIgnoreCase(key)) {
+                continue;
+            }
+            
             Object value = messagesSection.get(key);
 
             if (value instanceof List<?> list) {
@@ -53,16 +87,85 @@ public class MessageManager {
                         .map(item -> item == null ? "" : item.toString())
                         .toList();
                 messages.multiMessages.put(key, messageList);
+                multiCount++;
             } else if (value instanceof String str) {
                 messages.singleMessages.put(key, str);
-                if ("prefix".equalsIgnoreCase(key)) {
-                    messages.updatePrefix(str);
-                }
+                singleCount++;
             }
         }
 
-        lib.logDebug(plugin, "Loaded " + messages.singleMessages.size() + " single messages and " +
-                     messages.multiMessages.size() + " multi-line messages");
+        lib.logDebug(plugin, "Loaded " + singleCount + " single and " + multiCount + 
+                     " multi-line messages for module '" + moduleId + "' from " + sectionPath);
+    }
+    
+    /**
+     * Load messages for a plugin from a custom configuration file
+     * @param plugin The plugin instance
+     * @param config The configuration to load from
+     * @param sectionPath The path to the messages section (e.g., "messages")
+     */
+    public void loadMessages(JavaPlugin plugin, FileConfiguration config, String sectionPath) {
+        loadMessages(plugin, config, sectionPath, true);
+    }
+    
+    /**
+     * Load messages for a plugin from a custom configuration file
+     * @param plugin The plugin instance
+     * @param config The configuration to load from
+     * @param sectionPath The path to the messages section (e.g., "messages")
+     * @param clearExisting If true, clear existing messages before loading; if false, merge with existing
+     */
+    public void loadMessages(JavaPlugin plugin, FileConfiguration config, String sectionPath, boolean clearExisting) {
+        ConfigurationSection messagesSection = config.getConfigurationSection(sectionPath);
+
+        PluginMessages messages = pluginMessages.computeIfAbsent(plugin, k -> new PluginMessages());
+        
+        // Only clear if requested (allows accumulating messages from multiple sources)
+        if (clearExisting) {
+            messages.singleMessages.clear();
+            messages.multiMessages.clear();
+            messages.resetPrefix();
+        }
+
+        if (messagesSection == null) {
+            lib.logWarn(plugin, "No messages section found at '" + sectionPath + "'! Using default messages.");
+            return;
+        }
+
+        // Load prefix FIRST before other messages
+        if (messagesSection.contains("prefix") && messagesSection.isString("prefix")) {
+            String prefixValue = messagesSection.getString("prefix");
+            if (prefixValue != null) {
+                messages.updatePrefix(prefixValue);
+                lib.logDebug(plugin, "Updated prefix from " + sectionPath);
+            }
+        }
+
+        int singleCount = 0;
+        int multiCount = 0;
+        
+        for (String key : messagesSection.getKeys(false)) {
+            // Skip prefix since we already loaded it
+            if ("prefix".equalsIgnoreCase(key)) {
+                continue;
+            }
+            
+            Object value = messagesSection.get(key);
+
+            if (value instanceof List<?> list) {
+                List<String> messageList = list.stream()
+                        .map(item -> item == null ? "" : item.toString())
+                        .toList();
+                messages.multiMessages.put(key, messageList);
+                multiCount++;
+            } else if (value instanceof String str) {
+                messages.singleMessages.put(key, str);
+                singleCount++;
+            }
+        }
+
+        lib.logDebug(plugin, "Loaded " + singleCount + " single and " + multiCount + 
+                     " multi-line messages from " + sectionPath + (clearExisting ? " (cleared)" : " (merged)"));
     }
 
     /**
@@ -151,6 +254,19 @@ public class MessageManager {
      */
     public void sendPrefixedMessage(JavaPlugin plugin, CommandSender sender, String key, Map<String, String> placeholders) {
         sender.sendMessage(applyPrefix(plugin, resolveMessage(plugin, key, placeholders)).component());
+    }
+    
+    /**
+     * Send a module-specific single-line message with prefix
+     * @param plugin The plugin instance
+     * @param moduleId The module identifier
+     * @param sender The command sender
+     * @param key The message key
+     * @param placeholders The placeholders to replace
+     */
+    public void sendModulePrefixedMessage(JavaPlugin plugin, String moduleId, CommandSender sender, String key, Map<String, String> placeholders) {
+        String moduleKey = plugin.getName() + ":" + moduleId;
+        sender.sendMessage(applyModulePrefix(moduleKey, resolveModuleMessage(moduleKey, key, placeholders)).component());
     }
 
     /**
@@ -369,6 +485,21 @@ public class MessageManager {
 
         return normalise(raw, placeholders);
     }
+    
+    private NormalizedMessage resolveModuleMessage(String moduleKey, String key, Map<String, String> placeholders) {
+        PluginMessages messages = moduleMessages.get(moduleKey);
+        if (messages == null) {
+            return errorMessage("Module messages not loaded for " + moduleKey);
+        }
+
+        String lookupKey = sanitizeKey(key);
+        String raw = messages.singleMessages.get(lookupKey);
+        if (raw == null) {
+            return errorMessage("Module message not found: " + key + " in " + moduleKey);
+        }
+
+        return normalise(raw, placeholders);
+    }
 
     private List<NormalizedMessage> resolveMessageList(JavaPlugin plugin, String key, Map<String, String> placeholders) {
         PluginMessages messages = pluginMessages.get(plugin);
@@ -410,6 +541,10 @@ public class MessageManager {
 
     private NormalizedMessage applyPrefix(JavaPlugin plugin, NormalizedMessage message) {
         return applyPrefix(pluginMessages.get(plugin), message);
+    }
+    
+    private NormalizedMessage applyModulePrefix(String moduleKey, NormalizedMessage message) {
+        return applyPrefix(moduleMessages.get(moduleKey), message);
     }
 
     private NormalizedMessage applyPrefix(PluginMessages messages, NormalizedMessage message) {

@@ -12,6 +12,8 @@ import org.yusaki.lib.config.ConfigUpdateService;
 import org.yusaki.lib.gui.GUIManager;
 import org.yusaki.lib.modules.ItemLibrary;
 import org.yusaki.lib.modules.MessageManager;
+import org.yusaki.lib.modules.ItemEditManager;
+import org.yusaki.lib.modules.CustomItemManager;
 import org.yusaki.lib.text.ColorHelper;
 
 import java.util.List;
@@ -22,6 +24,8 @@ public final class YskLib extends JavaPlugin {
     private ItemLibrary itemLibrary;
     private GUIManager guiManager;
     private MessageManager messageManager;
+    private ItemEditManager itemEditManager;
+    private CustomItemManager customItemManager;
     
     @Override
     public void onEnable() {
@@ -46,6 +50,20 @@ public final class YskLib extends JavaPlugin {
         // Initialize MessageManager
         messageManager = new MessageManager(this);
         getLogger().info("MessageManager module enabled!");
+
+        // Initialize ItemEditManager (optional, soft dependency)
+        if (getConfig().getBoolean("modules.itemedit.enabled", true)) {
+            itemEditManager = new ItemEditManager(this);
+            if (itemEditManager.isInitialized()) {
+                getLogger().info("ItemEdit integration module enabled!");
+            }
+        }
+
+        // Initialize CustomItemManager (unified item API)
+        if (getConfig().getBoolean("modules.custom-items.enabled", true)) {
+            customItemManager = new CustomItemManager(this);
+            getLogger().info("CustomItemManager module enabled!");
+        }
 
         getLogger().info("YskLib enabled!");
     }
@@ -254,5 +272,46 @@ public final class YskLib extends JavaPlugin {
         if (messageManager != null) {
             messageManager.loadMessages(plugin);
         }
+    }
+    
+    /**
+     * Load messages from a custom configuration file
+     * @param plugin The plugin to load messages for
+     * @param config The configuration file to load from
+     * @param sectionPath The path to messages section (e.g., "messages")
+     */
+    public void loadMessages(JavaPlugin plugin, org.bukkit.configuration.file.FileConfiguration config, String sectionPath) {
+        if (messageManager != null) {
+            messageManager.loadMessages(plugin, config, sectionPath);
+        }
+    }
+    
+    /**
+     * Load messages from a custom configuration file with merge option
+     * @param plugin The plugin to load messages for
+     * @param config The configuration file to load from
+     * @param sectionPath The path to messages section (e.g., "messages")
+     * @param clearExisting If true, clear existing messages; if false, merge with existing
+     */
+    public void loadMessages(JavaPlugin plugin, org.bukkit.configuration.file.FileConfiguration config, String sectionPath, boolean clearExisting) {
+        if (messageManager != null) {
+            messageManager.loadMessages(plugin, config, sectionPath, clearExisting);
+        }
+    }
+    
+    /**
+     * Get the ItemEditManager
+     * @return ItemEditManager instance or null if not initialized
+     */
+    public ItemEditManager getItemEditManager() {
+        return itemEditManager;
+    }
+    
+    /**
+     * Get the CustomItemManager for unified item handling
+     * @return CustomItemManager instance or null if not initialized
+     */
+    public CustomItemManager getCustomItemManager() {
+        return customItemManager;
     }
 }

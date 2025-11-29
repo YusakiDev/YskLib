@@ -9,6 +9,8 @@
         <module name="lib" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel target="1.6" />
+    <bytecodeTargetLevel target="1.6">
+      <module name="YskLib" target="1.5" />
+    </bytecodeTargetLevel>
   </component>
 </project>

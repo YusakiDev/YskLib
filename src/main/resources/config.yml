@@ -19,4 +19,10 @@ modules:
     enabled: true
     shared-storage: false  # When true, all plugins share the same GUI configurations
     shared-file: "shared_guis.yml"  # The filename for shared GUI storage
-    # Add any future GUI-specific configurations here 
+    # Add any future GUI-specific configurations here
+  
+  itemedit:
+    enabled: true  # Enable ItemEdit integration if available
+  
+  custom-items:
+    enabled: true  # Enable unified custom item manager (itemedit:<id>, internal:<id>, MATERIAL)
