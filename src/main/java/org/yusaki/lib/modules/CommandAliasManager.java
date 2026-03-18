@@ -105,6 +105,7 @@ public final class CommandAliasManager {
         } catch (IllegalAccessException | NoSuchFieldException ignored) {
         }
 
+        Bukkit.getLogger().warning("[YskLib] Failed to access CommandMap via reflection");
         return null;
     }
 }
