@@ -16,8 +16,11 @@ import org.yusaki.lib.modules.ItemEditManager;
 import org.yusaki.lib.modules.CustomItemManager;
 import org.yusaki.lib.text.ColorHelper;
 
+import io.sentry.Sentry;
+import org.bukkit.command.Command;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class YskLib extends JavaPlugin {
     private FoliaLib foliaLib;
@@ -26,7 +29,9 @@ public final class YskLib extends JavaPlugin {
     private MessageManager messageManager;
     private ItemEditManager itemEditManager;
     private CustomItemManager customItemManager;
-    
+    private final Map<String, PluginInfo> sentryRegistry = new ConcurrentHashMap<>();
+    private record PluginInfo(String name, String version, boolean consent) {}
+
     @Override
     public void onEnable() {
         // Initialize FoliaLib
@@ -65,12 +70,94 @@ public final class YskLib extends JavaPlugin {
             getLogger().info("CustomItemManager module enabled!");
         }
 
+        initSentry();
         getLogger().info("YskLib enabled!");
+    }
+
+    private void initSentry() {
+        try {
+            Sentry.init(options -> {
+                options.setDsn("https://2a89e45e9b904a80b0745f934bdb9ef0@glitchtip.yusakidev.com/3");
+                options.setEnvironment("production");
+                options.setTag("plugin.family", "folia");
+                options.setRelease(getDescription().getVersion());
+
+                // Server context
+                options.setTag("server.software", getServer().getName());
+                options.setTag("server.version", getServer().getVersion());
+                options.setTag("server.bukkit_version", getServer().getBukkitVersion());
+                options.setTag("server.online_mode", String.valueOf(getServer().getOnlineMode()));
+                options.setTag("server.max_players", String.valueOf(getServer().getMaxPlayers()));
+
+                // JVM context
+                options.setTag("jvm.version", System.getProperty("java.version"));
+                options.setTag("jvm.vendor", System.getProperty("java.vendor"));
+                options.setTag("jvm.vm_name", System.getProperty("java.vm.name"));
+
+                // OS context
+                options.setTag("os.name", System.getProperty("os.name"));
+                options.setTag("os.version", System.getProperty("os.version"));
+                options.setTag("os.arch", System.getProperty("os.arch"));
+
+                // Memory
+                Runtime rt = Runtime.getRuntime();
+                options.setTag("memory.max_mb", String.valueOf(rt.maxMemory() / 1024 / 1024));
+                options.setTag("memory.processors", String.valueOf(rt.availableProcessors()));
+
+                // JVM flags
+                java.lang.management.RuntimeMXBean runtimeBean = java.lang.management.ManagementFactory.getRuntimeMXBean();
+                options.setTag("jvm.flags", String.join(" ", runtimeBean.getInputArguments()));
+            });
+            getLogger().info("Sentry error reporting initialized");
+        } catch (Exception e) {
+            getLogger().warning("Failed to initialize Sentry: " + e.getMessage());
+        }
     }
 
     @Override
     public void onDisable() {
+        Sentry.close();
         getLogger().info("YskLib disabled!");
+    }
+
+    public void registerPlugin(JavaPlugin plugin) {
+        boolean consent = plugin.getConfig().getBoolean("error-reporting", true);
+        sentryRegistry.put(plugin.getName(), new PluginInfo(
+            plugin.getName(), plugin.getDescription().getVersion(), consent
+        ));
+    }
+
+    public void captureException(String pluginName, Throwable throwable) {
+        PluginInfo info = sentryRegistry.get(pluginName);
+        if (info == null || !info.consent()) return;
+        Sentry.withScope(scope -> {
+            scope.setTag("plugin.name", info.name());
+            scope.setTag("plugin.version", info.version());
+            scope.setTag("plugin.family", "folia");
+            Sentry.captureException(throwable);
+        });
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!command.getName().equalsIgnoreCase("ysklib")) return false;
+        if (args.length == 1 && args[0].equalsIgnoreCase("test-sentry")) {
+            try {
+                throw new RuntimeException("YskLib test exception - verifying Sentry integration");
+            } catch (Exception e) {
+                Sentry.withScope(scope -> {
+                    scope.setTag("plugin.name", "YskLib");
+                    scope.setTag("plugin.version", getDescription().getVersion());
+                    scope.setTag("plugin.family", "folia");
+                    Sentry.captureException(e);
+                });
+                sender.sendMessage("Test exception sent to GlitchTip!");
+                getLogger().info("Test exception sent to Sentry/GlitchTip");
+            }
+            return true;
+        }
+        sender.sendMessage("Usage: /ysklib test-sentry");
+        return true;
     }
 
     public boolean canExecuteInWorld(JavaPlugin plugin, World world) {

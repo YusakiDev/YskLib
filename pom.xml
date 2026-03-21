@@ -13,7 +13,7 @@
     <name>YskLib</name>
 
     <!-- Change to the appropriate plugin's version, starting at 1.0.0. -->
-    <version>1.6.9${build.number.formatted}</version>
+    <version>1.7.0${build.number.formatted}</version>
 
     <!-- DO NOT EDIT. -->
     <packaging>jar</packaging>
@@ -105,6 +105,14 @@
             <scope>compile</scope>
         </dependency>
 
+        <!-- Sentry/GlitchTip error reporting -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry</artifactId>
+            <version>8.12.0</version>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- ItemEdit integration (optional) -->
         <dependency>
             <groupId>com.github.emanondev</groupId>
@@ -172,11 +180,21 @@
                                         <include>**</include>
                                     </includes>
                                 </filter>
+                                <filter>
+                                    <artifact>io.sentry:sentry</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
                             </filters>
                             <relocations>
                                 <relocation>
                                     <pattern>com.tcoded.folialib</pattern>
                                     <shadedPattern>org.yusaki.lib.libs.folialib</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.sentry</pattern>
+                                    <shadedPattern>org.yusaki.lib.libs.sentry</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

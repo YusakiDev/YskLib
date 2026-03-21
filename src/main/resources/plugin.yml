@@ -7,3 +7,8 @@ description: A library plugin for Yusaki's plugins
 folia-supported: true
 softdepend:
   - ItemEdit
+commands:
+  ysklib:
+    description: YskLib admin commands
+    usage: /ysklib <test-sentry>
+    permission: ysklib.admin
