@@ -26,3 +26,13 @@ modules:
   
   custom-items:
     enabled: true  # Enable unified custom item manager (itemedit:<id>, internal:<id>, MATERIAL)
+
+  sounds:
+    enabled: true  # Enable SoundHelper module
+    # Preset sounds for common UI feedback
+    # Format: "SOUND_NAME:volume:pitch" or verbose YAML
+    presets:
+      success: "ENTITY_PLAYER_LEVELUP:1.0:1.2"
+      error: "ENTITY_VILLAGER_NO:1.0:0.8"
+      click: "UI_BUTTON_CLICK:0.5:1.0"
+      ding: "ENTITY_EXPERIENCE_ORB_PICKUP:1.0:1.2"
