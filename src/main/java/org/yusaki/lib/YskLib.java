@@ -14,6 +14,7 @@ import org.yusaki.lib.modules.ItemLibrary;
 import org.yusaki.lib.modules.MessageManager;
 import org.yusaki.lib.modules.ItemEditManager;
 import org.yusaki.lib.modules.CustomItemManager;
+import org.yusaki.lib.modules.SoundHelper;
 import org.yusaki.lib.text.ColorHelper;
 
 import io.sentry.Sentry;
@@ -29,6 +30,7 @@ public final class YskLib extends JavaPlugin {
     private MessageManager messageManager;
     private ItemEditManager itemEditManager;
     private CustomItemManager customItemManager;
+    private SoundHelper soundHelper;
     private final Map<String, PluginInfo> sentryRegistry = new ConcurrentHashMap<>();
     private record PluginInfo(String name, String version, boolean consent) {}
 
@@ -68,6 +70,12 @@ public final class YskLib extends JavaPlugin {
         if (getConfig().getBoolean("modules.custom-items.enabled", true)) {
             customItemManager = new CustomItemManager(this);
             getLogger().info("CustomItemManager module enabled!");
+        }
+
+        // Initialize SoundHelper
+        if (getConfig().getBoolean("modules.sounds.enabled", true)) {
+            soundHelper = new SoundHelper(this);
+            getLogger().info("SoundHelper module enabled!");
         }
 
         initSentry();
@@ -400,5 +408,13 @@ public final class YskLib extends JavaPlugin {
      */
     public CustomItemManager getCustomItemManager() {
         return customItemManager;
+    }
+
+    /**
+     * Get the SoundHelper for playing sounds
+     * @return SoundHelper instance or null if not initialized
+     */
+    public SoundHelper getSoundHelper() {
+        return soundHelper;
     }
 }

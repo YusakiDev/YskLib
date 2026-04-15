@@ -24,6 +24,50 @@ messageManager.sendMessage(this, player, "welcome-message",
     MessageManager.placeholders("player", player.getName(), "server", "MyServer"));
 ```
 
+### Sound Management
+- **Config-based sounds** - Load sounds from config with caching for performance
+- **Preset sounds** - Built-in `success`, `error`, `click`, `ding` presets configurable in YskLib's config
+- **Per-plugin pools** - Each plugin maintains its own sound registry
+- **Module sounds** - Organize sounds by feature/module within plugins
+- **Dual format support** - Compact (`SOUND:volume:pitch`) and verbose YAML formats
+
+Example usage:
+```java
+YskLib yskLib = (YskLib) getServer().getPluginManager().getPlugin("YskLib");
+SoundHelper soundHelper = yskLib.getSoundHelper();
+
+// Play preset sounds
+soundHelper.playSuccess(player);
+soundHelper.playError(player);
+soundHelper.playClick(player);
+
+// Load custom sounds from your plugin's config
+soundHelper.loadSounds(this, getConfig().getConfigurationSection("sounds"));
+
+// Play a loaded sound by key
+soundHelper.play(this, player, "reward");
+
+// Direct play without config
+soundHelper.play(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+```
+
+Config format:
+```yaml
+# In YskLib config.yml - preset customization
+modules:
+  sounds:
+    presets:
+      success: "ENTITY_PLAYER_LEVELUP:1.0:1.2"
+
+# In your plugin - custom sounds
+sounds:
+  reward: "ENTITY_PLAYER_LEVELUP:1.0:1.5"
+  deny:
+    sound: ENTITY_VILLAGER_NO
+    volume: 1.0
+    pitch: 0.8
+```
+
 ### World Management
 - `YskLib#canExecuteInWorld(JavaPlugin plugin, World world)` checks if a plugin is enabled in a specific world based on the `enabled-worlds` configuration list.
 - Supports wildcard `*` to enable all worlds.
