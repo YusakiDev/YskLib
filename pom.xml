@@ -126,6 +126,17 @@
              your file will shade with all the dependencies resulting it crashes and huge file size. -->
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>lamalia-releases</id>
+            <url>https://nexus.lamalia.net/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>lamalia-snapshots</id>
+            <url>https://nexus.lamalia.net/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <profiles>
         <profile>
             <id>deploy</id>
