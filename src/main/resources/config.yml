@@ -1,4 +1,4 @@
-version: 1.6.3
+version: 1.8
 
 # Debug level (0-3)
 # 0 = Severe only
@@ -20,7 +20,18 @@ modules:
     shared-storage: false  # When true, all plugins share the same GUI configurations
     shared-file: "shared_guis.yml"  # The filename for shared GUI storage
     # Add any future GUI-specific configurations here
-  
+
+  dialogs:
+    enabled: true  # Enable prompt/dialog service
+    prefer-native: true  # Use Minecraft dialogs when available
+    chat-fallback: true  # Fall back to chat/clickable-chat prompts if dialogs are disabled
+    callback-uses: 1
+    callback-lifetime-seconds: 120
+    text-input:
+      cancel-keywords:
+        - "cancel"
+        - "abort"
+
   itemedit:
     enabled: true  # Enable ItemEdit integration if available
   

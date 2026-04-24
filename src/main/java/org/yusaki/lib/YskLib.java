@@ -2,6 +2,7 @@ package org.yusaki.lib;
 
 import com.tcoded.folialib.FoliaLib;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -9,11 +10,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.yusaki.lib.config.ConfigUpdateOptions;
 import org.yusaki.lib.config.ConfigUpdateService;
+import org.yusaki.lib.dialog.ConfirmationPrompt;
+import org.yusaki.lib.dialog.NoticePrompt;
+import org.yusaki.lib.dialog.TextInputPrompt;
 import org.yusaki.lib.gui.GUIManager;
 import org.yusaki.lib.modules.ItemLibrary;
 import org.yusaki.lib.modules.MessageManager;
 import org.yusaki.lib.modules.ItemEditManager;
 import org.yusaki.lib.modules.CustomItemManager;
+import org.yusaki.lib.modules.DialogService;
 import org.yusaki.lib.text.ColorHelper;
 
 import io.sentry.Sentry;
@@ -29,6 +34,7 @@ public final class YskLib extends JavaPlugin {
     private MessageManager messageManager;
     private ItemEditManager itemEditManager;
     private CustomItemManager customItemManager;
+    private DialogService dialogService;
     private final Map<String, PluginInfo> sentryRegistry = new ConcurrentHashMap<>();
     private record PluginInfo(String name, String version, boolean consent) {}
 
@@ -50,6 +56,11 @@ public final class YskLib extends JavaPlugin {
         if (getConfig().getBoolean("modules.gui.enabled", true)) {
             guiManager = new GUIManager(this);
             getLogger().info("GUI Framework module enabled!");
+        }
+
+        if (getConfig().getBoolean("modules.dialogs.enabled", true)) {
+            dialogService = new DialogService(this);
+            getLogger().info("DialogService module enabled!");
         }
 
         // Initialize MessageManager
@@ -156,7 +167,54 @@ public final class YskLib extends JavaPlugin {
             }
             return true;
         }
-        sender.sendMessage("Usage: /ysklib test-sentry");
+
+        if (args.length >= 1 && args[0].equalsIgnoreCase("test-dialog")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(Component.text("This command can only be run by a player.", NamedTextColor.RED));
+                return true;
+            }
+            if (dialogService == null) {
+                player.sendMessage(Component.text("DialogService is not enabled.", NamedTextColor.RED));
+                return true;
+            }
+
+            String mode = args.length >= 2 ? args[1].toLowerCase() : "confirm";
+            switch (mode) {
+                case "confirm" -> dialogService.showConfirmation(player, ConfirmationPrompt.builder(
+                                Component.text("Delete a test object?", NamedTextColor.GOLD))
+                        .body(
+                                Component.text("This is a YskLib confirmation prompt.", NamedTextColor.GRAY),
+                                Component.text("No data is actually deleted.", NamedTextColor.GRAY))
+                        .confirmLabel(Component.text("Confirm", NamedTextColor.GREEN))
+                        .cancelLabel(Component.text("Cancel", NamedTextColor.RED))
+                        .onConfirm(p -> p.sendMessage(Component.text("Confirmation callback fired.", NamedTextColor.GREEN)))
+                        .onCancel(p -> p.sendMessage(Component.text("Confirmation cancelled.", NamedTextColor.YELLOW)))
+                        .build());
+                case "notice" -> dialogService.showNotice(player, NoticePrompt.builder(
+                                Component.text("Rules Notice", NamedTextColor.GOLD))
+                        .body(
+                                Component.text("This is a YskLib notice prompt.", NamedTextColor.GRAY),
+                                Component.text("Use it for acknowledgement flows.", NamedTextColor.GRAY))
+                        .actionLabel(Component.text("Understood", NamedTextColor.GREEN))
+                        .onAcknowledge(p -> p.sendMessage(Component.text("Notice acknowledged.", NamedTextColor.GREEN)))
+                        .build());
+                case "input" -> dialogService.showTextInput(player, TextInputPrompt.builder(
+                                Component.text("Name a test group", NamedTextColor.GOLD),
+                                "test_value",
+                                Component.text("Test Value", NamedTextColor.WHITE))
+                        .body(Component.text("Submit a short value to test dialog or chat fallback input.", NamedTextColor.GRAY))
+                        .maxLength(24)
+                        .submitLabel(Component.text("Submit", NamedTextColor.GREEN))
+                        .cancelLabel(Component.text("Cancel", NamedTextColor.RED))
+                        .onSubmit((p, value) -> p.sendMessage(Component.text("Received input: " + value, NamedTextColor.GREEN)))
+                        .onCancel(p -> p.sendMessage(Component.text("Input prompt cancelled.", NamedTextColor.YELLOW)))
+                        .build());
+                default -> player.sendMessage(Component.text("Usage: /ysklib test-dialog <confirm|notice|input>", NamedTextColor.YELLOW));
+            }
+            return true;
+        }
+
+        sender.sendMessage("Usage: /ysklib test-sentry | /ysklib test-dialog <confirm|notice|input>");
         return true;
     }
 
@@ -400,5 +458,9 @@ public final class YskLib extends JavaPlugin {
      */
     public CustomItemManager getCustomItemManager() {
         return customItemManager;
+    }
+
+    public DialogService getDialogService() {
+        return dialogService;
     }
 }

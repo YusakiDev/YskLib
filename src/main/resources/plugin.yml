@@ -1,7 +1,7 @@
 name: YskLib
 version: '${project.version}'
 main: org.yusaki.lib.YskLib
-api-version: '1.20'
+api-version: '1.21'
 author: Yusaki
 description: A library plugin for Yusaki's plugins
 folia-supported: true
@@ -10,5 +10,5 @@ softdepend:
 commands:
   ysklib:
     description: YskLib admin commands
-    usage: /ysklib <test-sentry>
+    usage: /ysklib <test-sentry|test-dialog>
     permission: ysklib.admin
