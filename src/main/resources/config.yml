@@ -47,3 +47,8 @@ modules:
       error: "ENTITY_VILLAGER_NO:1.0:0.8"
       click: "UI_BUTTON_CLICK:0.5:1.0"
       ding: "ENTITY_EXPERIENCE_ORB_PICKUP:1.0:1.2"
+
+# Anonymous error reporting (Sentry/GlitchTip) sent to YskLib's upstream project
+# Set enabled: false to opt out
+sentry:
+  enabled: true

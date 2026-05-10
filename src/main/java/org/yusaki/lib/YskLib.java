@@ -94,6 +94,10 @@ public final class YskLib extends JavaPlugin {
     }
 
     private void initSentry() {
+        if (!getConfig().getBoolean("sentry.enabled", true)) {
+            getLogger().info("Sentry error reporting disabled in config");
+            return;
+        }
         try {
             Sentry.init(options -> {
                 options.setDsn("https://2a89e45e9b904a80b0745f934bdb9ef0@glitchtip.yusakidev.com/3");
@@ -122,10 +126,6 @@ public final class YskLib extends JavaPlugin {
                 Runtime rt = Runtime.getRuntime();
                 options.setTag("memory.max_mb", String.valueOf(rt.maxMemory() / 1024 / 1024));
                 options.setTag("memory.processors", String.valueOf(rt.availableProcessors()));
-
-                // JVM flags
-                java.lang.management.RuntimeMXBean runtimeBean = java.lang.management.ManagementFactory.getRuntimeMXBean();
-                options.setTag("jvm.flags", String.join(" ", runtimeBean.getInputArguments()));
             });
             getLogger().info("Sentry error reporting initialized");
         } catch (Exception e) {
